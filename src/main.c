@@ -24,6 +24,7 @@ this program.  If not, see <http://www.gnu.org/licenses/>.  */
 #include "rule.h"
 #include "debug.h"
 #include "getopt.h"
+#include "ctags.h"
 
 #include <assert.h>
 #ifdef _AMIGA
@@ -272,6 +273,10 @@ static char *jobserver_auth = NULL;
 
 char *sync_mutex = NULL;
 
+/* ctags file name */
+
+char *ctags_filename = NULL;
+
 /* Maximum load average at which multiple jobs will be run.
    Negative values mean unlimited, while zero means limit to
    zero load (which could be useful to start infinite jobs remotely
@@ -464,6 +469,7 @@ static const struct command_switch switches[] =
     { CHAR_MAX+7, string, &sync_mutex, 1, 1, 0, 0, 0, "sync-mutex" },
     { CHAR_MAX+8, flag_off, &silent_flag, 1, 1, 0, 0, &default_silent_flag, "no-silent" },
     { CHAR_MAX+9, string, &jobserver_auth, 1, 0, 0, 0, 0, "jobserver-fds" },
+    { CHAR_MAX+10, string, &ctags_filename, 1, 1, 0, 0, 0, "ctags-file" },
     { 0, 0, 0, 0, 0, 0, 0, 0, 0 }
   };
 
@@ -1942,7 +1948,17 @@ main (int argc, char **argv, char **envp)
 
   /* Read all the makefiles.  */
 
+  if (ctags_filename != NULL)
+  {
+    init_ctags_output (ctags_filename);
+  }
+
   read_files = read_all_makefiles (makefiles == 0 ? 0 : makefiles->list);
+
+  if (ctags_filename != NULL)
+  {
+    write_out_ctags ();
+  }
 
 #ifdef WINDOWS32
   /* look one last time after reading all Makefiles */

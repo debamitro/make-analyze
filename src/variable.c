@@ -28,6 +28,7 @@ this program.  If not, see <http://www.gnu.org/licenses/>.  */
 #include "pathstuff.h"
 #endif
 #include "hash.h"
+#include "ctags.h"
 
 /* Incremented every time we add or remove a global variable.  */
 static unsigned long variable_changenum;
@@ -203,7 +204,14 @@ define_variable_in_set (const char *name, size_t length,
   struct variable var_key;
 
   if (set == NULL)
+  {
     set = &global_variable_set;
+
+    if (flocp != NULL)
+    {
+        add_to_ctags (name, flocp->filenm, flocp->lineno);
+    }
+  }
 
   var_key.name = (char *) name;
   var_key.length = (unsigned int) length;
