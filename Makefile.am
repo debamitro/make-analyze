@@ -29,6 +29,7 @@ include_HEADERS = src/gnumake.h
 man_MANS =	doc/make.1
 
 make_SRCS =	src/ar.c src/arscan.c src/commands.c src/commands.h \
+        src/ctags.h src/ctags.c \
 		src/debug.h src/default.c src/dep.h src/dir.c src/expand.c \
 		src/file.c src/filedef.h src/function.c src/getopt.c \
 		src/getopt.h src/getopt1.c src/gettext.h src/guile.c \
