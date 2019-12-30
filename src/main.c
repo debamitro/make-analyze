@@ -277,6 +277,10 @@ char *sync_mutex = NULL;
 
 char *ctags_filename = NULL;
 
+/* file name for printing the goal-dependency tree */
+
+char * goaltree_filename = NULL;
+
 /* Maximum load average at which multiple jobs will be run.
    Negative values mean unlimited, while zero means limit to
    zero load (which could be useful to start infinite jobs remotely
@@ -470,6 +474,7 @@ static const struct command_switch switches[] =
     { CHAR_MAX+8, flag_off, &silent_flag, 1, 1, 0, 0, &default_silent_flag, "no-silent" },
     { CHAR_MAX+9, string, &jobserver_auth, 1, 0, 0, 0, 0, "jobserver-fds" },
     { CHAR_MAX+10, string, &ctags_filename, 1, 1, 0, 0, 0, "ctags-file" },
+    { CHAR_MAX+11, string, &goaltree_filename, 1, 1, 0, 0, 0, "goaltree-file" },
     { 0, 0, 0, 0, 0, 0, 0, 0, 0 }
   };
 
@@ -1050,6 +1055,63 @@ reset_jobserver (void)
   jobserver_clear ();
   free (jobserver_auth);
   jobserver_auth = NULL;
+}
+
+static void print_n_spaces (const int n, FILE * f)
+{
+    int i;
+    for (i = 0; i < n; ++i)
+        fprintf (f, " ");
+}
+
+static void print_deps_recursive (struct dep * firstDep, int level, FILE * f)
+{
+    struct dep * depItr = firstDep;
+    for (; depItr != NULL; depItr = depItr->next)
+    {
+        print_n_spaces (level, f);
+
+        if (depItr->file->deps != NULL)
+        {
+            fprintf (f, "{\n");
+            print_n_spaces (level, f);
+            fprintf (f, " \"%s\": [\n", depItr->file->name);
+
+            print_deps_recursive (depItr->file->deps, level+2, f);
+
+            print_n_spaces (level, f);
+
+            fprintf (f, " ]\n");
+            print_n_spaces (level, f);
+            fprintf (f, "}");
+        }
+        else
+        {
+            fprintf (f, "\"%s\"",depItr->file->name);
+        }
+
+        if (depItr->next != NULL)
+            fprintf (f, ",");
+        fprintf (f, "\n");
+    }
+}
+
+static void print_goal_tree (struct goaldep * goals, FILE * f)
+{
+    struct goaldep * itr = goals;
+    fprintf (f,"[\n");
+    for (; itr != NULL; itr = itr->next)
+    {
+        fprintf (f, "{\n");
+        fprintf (f, " \"%s\": [\n", itr->file->name);
+        print_deps_recursive (itr->file->deps, 2, f);
+        fprintf (f, " ]\n");
+        fprintf (f, "}");
+        if (itr->next != NULL)
+            fprintf (f, ",");
+        fprintf (f, "\n");
+    }
+    fprintf (f, "]\n");
 }
 
 #ifdef _AMIGA
@@ -2600,6 +2662,16 @@ main (int argc, char **argv, char **envp)
   /* Update the goals.  */
 
   DB (DB_BASIC, (_("Updating goal targets....\n")));
+
+  if (goaltree_filename != NULL)
+    {
+      FILE * f = fopen (goaltree_filename, "w");
+      if (f != NULL)
+        {
+          print_goal_tree (goals, f);
+          fclose (f);
+        }
+    }
 
   {
     switch (update_goal_chain (goals))

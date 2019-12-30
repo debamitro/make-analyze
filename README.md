@@ -24,3 +24,7 @@ Please follow the same instructions as GNU make, i.e., the ones in README.git. N
 ### --ctags-file=&lt;file-name&gt;
 
 Write out a ctags file with make variable definition locations. If you open any Makefile with a ctags-enabled editor like Vi you should be able to look up the definition of any variable.
+
+### --goaltree-file=&lt;file-name&gt;
+
+Write out a json file with the current goals and their dependencies, recursively. This is work-in-progress. A PyQt5-based viewer is supplied at pyqt-viewer/visualize-goaltree.py which can show the data from this file.
