@@ -1059,59 +1059,59 @@ reset_jobserver (void)
 
 static void print_n_spaces (const int n, FILE * f)
 {
-    int i;
-    for (i = 0; i < n; ++i)
-        fprintf (f, " ");
+  int i;
+  for (i = 0; i < n; ++i)
+    fprintf (f, " ");
 }
 
 static void print_deps_recursive (struct dep * firstDep, int level, FILE * f)
 {
-    struct dep * depItr = firstDep;
-    for (; depItr != NULL; depItr = depItr->next)
+  struct dep * depItr = firstDep;
+  for (; depItr != NULL; depItr = depItr->next)
     {
-        print_n_spaces (level, f);
+      print_n_spaces (level, f);
 
-        if (depItr->file->deps != NULL)
+      if (depItr->file->deps != NULL)
         {
-            fprintf (f, "{\n");
-            print_n_spaces (level, f);
-            fprintf (f, " \"%s\": [\n", depItr->file->name);
+          fprintf (f, "{\n");
+          print_n_spaces (level, f);
+          fprintf (f, " \"%s\": [\n", depItr->file->name);
 
-            print_deps_recursive (depItr->file->deps, level+2, f);
+          print_deps_recursive (depItr->file->deps, level+2, f);
 
-            print_n_spaces (level, f);
+          print_n_spaces (level, f);
 
-            fprintf (f, " ]\n");
-            print_n_spaces (level, f);
-            fprintf (f, "}");
+          fprintf (f, " ]\n");
+          print_n_spaces (level, f);
+          fprintf (f, "}");
         }
-        else
+      else
         {
-            fprintf (f, "\"%s\"",depItr->file->name);
+          fprintf (f, "\"%s\"",depItr->file->name);
         }
 
-        if (depItr->next != NULL)
-            fprintf (f, ",");
-        fprintf (f, "\n");
+      if (depItr->next != NULL)
+        fprintf (f, ",");
+      fprintf (f, "\n");
     }
 }
 
 static void print_goal_tree (struct goaldep * goals, FILE * f)
 {
-    struct goaldep * itr = goals;
-    fprintf (f,"[\n");
-    for (; itr != NULL; itr = itr->next)
+  struct goaldep * itr = goals;
+  fprintf (f,"[\n");
+  for (; itr != NULL; itr = itr->next)
     {
-        fprintf (f, "{\n");
-        fprintf (f, " \"%s\": [\n", itr->file->name);
-        print_deps_recursive (itr->file->deps, 2, f);
-        fprintf (f, " ]\n");
-        fprintf (f, "}");
-        if (itr->next != NULL)
-            fprintf (f, ",");
-        fprintf (f, "\n");
+      fprintf (f, "{\n");
+      fprintf (f, " \"%s\": [\n", itr->file->name);
+      print_deps_recursive (itr->file->deps, 2, f);
+      fprintf (f, " ]\n");
+      fprintf (f, "}");
+      if (itr->next != NULL)
+        fprintf (f, ",");
+      fprintf (f, "\n");
     }
-    fprintf (f, "]\n");
+  fprintf (f, "]\n");
 }
 
 #ifdef _AMIGA

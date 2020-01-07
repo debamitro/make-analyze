@@ -50,7 +50,8 @@ void add_to_ctags (const char * name, const char * filename, unsigned long linen
 
       if (TAGlines.array != NULL)
         {
-          for (int i = 0; i < TAGlines.capacity; ++i)
+          int i;
+          for (i = 0; i < TAGlines.capacity; ++i)
             {
               biggerArray[i] = TAGlines.array[i];
             }
@@ -78,7 +79,8 @@ void write_out_ctags ()
 
   qsort (TAGlines.array, TAGlines.size, sizeof (TAGline), TAGline_compare);
 
-  for (int i = 0; i < TAGlines.size; ++i)
+  int i;
+  for (i = 0; i < TAGlines.size; ++i)
     {
       fprintf (TAGSfile, "%s\t%s\t%ld\n",
                TAGlines.array[i].name,
