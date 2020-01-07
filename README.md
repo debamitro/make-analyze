@@ -28,3 +28,7 @@ Write out a ctags file with make variable definition locations. If you open any 
 ### --goaltree-file=&lt;file-name&gt;
 
 Write out a json file with the current goals and their dependencies, recursively. This is work-in-progress. A PyQt5-based viewer is supplied at pyqt-viewer/visualize-goaltree.py which can show the data from this file.
+
+### --detect-multiple-definition
+
+Print out details about multiply-defined global variables. This is helpful for tracking down problems in large makefiles with a lot of variables.

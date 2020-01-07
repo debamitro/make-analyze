@@ -281,6 +281,10 @@ char *ctags_filename = NULL;
 
 char * goaltree_filename = NULL;
 
+/* option for detecting multiple definitions of the same variable */
+
+int detect_multiple_definition = 0;
+
 /* Maximum load average at which multiple jobs will be run.
    Negative values mean unlimited, while zero means limit to
    zero load (which could be useful to start infinite jobs remotely
@@ -475,6 +479,7 @@ static const struct command_switch switches[] =
     { CHAR_MAX+9, string, &jobserver_auth, 1, 0, 0, 0, 0, "jobserver-fds" },
     { CHAR_MAX+10, string, &ctags_filename, 1, 1, 0, 0, 0, "ctags-file" },
     { CHAR_MAX+11, string, &goaltree_filename, 1, 1, 0, 0, 0, "goaltree-file" },
+    { CHAR_MAX+12, flag, &detect_multiple_definition, 1, 1, 0, 0, 0, "detect-multiple-definition"},
     { 0, 0, 0, 0, 0, 0, 0, 0, 0 }
   };
 

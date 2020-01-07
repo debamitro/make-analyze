@@ -206,11 +206,6 @@ define_variable_in_set (const char *name, size_t length,
   if (set == NULL)
   {
     set = &global_variable_set;
-
-    if (flocp != NULL)
-    {
-        add_to_ctags (name, flocp->filenm, flocp->lineno);
-    }
   }
 
   var_key.name = (char *) name;
@@ -1428,6 +1423,31 @@ do_variable_definition (const floc *flocp, const char *varname,
      inside a $(call ...) or something.  Since this function is only ever
      invoked in places where we want to define globally visible variables,
      make sure we define this variable in the global set.  */
+
+  if ((flavor == f_simple ||
+       flavor == f_recursive ||
+       flavor == f_shell) &&
+      (target_var == 0 ||
+       current_variable_set_list->set == NULL) &&
+      flocp != NULL)
+    {
+      add_to_ctags (varname, flocp->filenm, flocp->lineno);
+
+      if (!conditional && detect_multiple_definition)
+        {
+          struct variable * possible_duplicate = lookup_variable (varname, strlen(varname));
+          if (possible_duplicate != NULL && possible_duplicate->fileinfo.filenm != NULL)
+            {
+              /* Re-definition by the user */
+              printf ("%s redefined at %s:%ld, original definition at %s:%ld\n",
+                      varname,
+                      flocp->filenm,
+                      flocp->lineno,
+                      possible_duplicate->fileinfo.filenm,
+                      possible_duplicate->fileinfo.lineno);
+            }
+        }
+    }
 
   v = define_variable_in_set (varname, strlen (varname), p,
                               origin, flavor == f_recursive,
