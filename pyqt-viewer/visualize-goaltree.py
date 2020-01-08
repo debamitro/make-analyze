@@ -3,12 +3,17 @@
 import sys
 import json
 
-from PyQt5.QtWidgets import QMainWindow, QApplication, QTreeView
-from PyQt5.QtGui import QStandardItemModel, QStandardItem
+from PyQt5.QtWidgets import QMainWindow, QApplication, QTreeView, QAction
+from PyQt5.QtGui import QStandardItemModel, QStandardItem, QKeySequence
 
-class OurTreeModel (QStandardItemModel):
-    def __init__ (self):
-        super (OurTreeModel, self).__init__()
+class GoalDepTreeModel (QStandardItemModel):
+    def __init__ (self, jsonFile):
+        super (GoalDepTreeModel, self).__init__()
+
+        with open (jsonFile) as f:
+            treeData = json.load(f)
+            self.setTreeData (self.invisibleRootItem(), treeData)
+
 
     def setTreeData (self, parent, treeData):
         if type (treeData) == list:
@@ -22,23 +27,35 @@ class OurTreeModel (QStandardItemModel):
         else:
             parent.appendRow (QStandardItem (treeData))
 
-class OurTreeView (QTreeView):
+    def goalCount (self):
+        return self.invisibleRootItem().rowCount()
+
+class GoalDepTreeView (QTreeView):
     def __init__ (self, jsonFile):
-        super (OurTreeView, self).__init__()
-        treeModel = OurTreeModel ()
-
-        with open (jsonFile) as f:
-            treeData = json.load(f)
-            treeModel.setTreeData (treeModel.invisibleRootItem(), treeData)
-
+        super (GoalDepTreeView, self).__init__()
+        treeModel = GoalDepTreeModel (jsonFile)
         self.setModel (treeModel)
+        self.setHeaderHidden (True)
         self.show()
 
 class OurMainWindow (QMainWindow):
     def __init__(self):
         super(OurMainWindow, self).__init__()
-        self.treeView = OurTreeView (sys.argv[1])
+        self.setWindowTitle ('Goal dependency tree viewer')
+
+        self.menu = self.menuBar()
+        self.menu.setNativeMenuBar(False)
+        self.fileMenu = self.menu.addMenu ('File')
+
+        exitAction = QAction("Exit", self)
+        exitAction.setShortcut(QKeySequence.Quit)
+        exitAction.triggered.connect(self.close)
+
+        self.fileMenu.addAction(exitAction)
+
+        self.treeView = GoalDepTreeView (sys.argv[1])
         self.setCentralWidget (self.treeView)
+        self.statusBar().showMessage ('Showing {} goal(s)'.format (self.treeView.model().goalCount()))
         self.show()
 
 
