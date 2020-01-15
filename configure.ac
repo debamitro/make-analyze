@@ -1,7 +1,8 @@
 # Process this file with autoconf to produce a configure script.
 #
-# Copyright (C) 1993-2019 Free Software Foundation, Inc.
-# This file is part of GNU Make.
+# GNU Make Copyright (C) 1993-2019 Free Software Foundation, Inc.
+# This file was part of GNU Make, and it has been modified for make-analyze
+# Copyright 2019 Debamitro Chakraborti
 #
 # GNU Make is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -16,7 +17,7 @@
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
 
-AC_INIT([GNU make],[4.2.92],[bug-make@gnu.org])
+AC_INIT([make-analyze],[4.2.92],[debamitro@gmail.com])
 
 AC_PREREQ([2.69])
 

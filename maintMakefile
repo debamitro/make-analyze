@@ -171,9 +171,12 @@ update: po-check
 #   http://translation.sf.net/maint/
 #   ftp://tiger.informatik.hu-berlin.de/pub/po/maint/
 
+# The following paths has been modified for make-analyze
+# so that they refer to make
+
 po_wget_flags =	--recursive --level=1 --no-directories --no-check-certificate
-po_repo = https://translationproject.org/latest/$(PACKAGE)
-po_sync = translationproject.org::tp/latest/$(PACKAGE)/
+po_repo = https://translationproject.org/latest/make
+po_sync = translationproject.org::tp/latest/make/
 
 .PHONY: do-po-update po-update
 do-po-update:

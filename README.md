@@ -1,12 +1,12 @@
 # Make-analyze
 
-A GNU make fork with added features for statically analyzing Makefile-based projects.
+A GNU make fork with added features for statically analyzing Makefile-based projects. This is based on GNU make 4.2.92 and has all of the functionality provided by it. This is why the executable's name has not been changed.
 
 ## How to build from source
 
 ### From a tarball
 
-You can find the latest tarball in this repository at releases/make-4.2.92.tar.gz.
+You can find the latest tarball in this repository at releases/make-analyze-4.2.92.tar.gz.
 Once you unpack it you should be able to follow the usual steps of
 
 ```bash

@@ -786,7 +786,8 @@ update_po_files() {
 case $SKIP_PO in
 '')
   if test -d po; then
-    update_po_files po $package || exit
+    # The following command has been modified to work with make-analyze
+    update_po_files po make || exit
   fi
 
   if test -d runtime-po; then
