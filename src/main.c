@@ -2618,6 +2618,9 @@ main (int argc, char **argv, char **envp)
       if (f != NULL)
         {
           print_goal_tree (goals, f);
+
+          printf ("Dumped out goal dependencies in '%s'\nUse visualize-goaltree.py '%s' to inspect the tree\n",
+                  goaltree_filename, goaltree_filename);
           fclose (f);
         }
     }

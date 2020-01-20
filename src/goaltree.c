@@ -23,8 +23,8 @@ static struct hash_table goaltreeFiles;
 
 struct filename_id
 {
-    const char * filename;
-    unsigned long id;
+  const char * filename;
+  unsigned long id;
 };
 
 static unsigned long nFiles = 0;
@@ -56,9 +56,9 @@ filename_to_id (const char * filename)
   key.id = 0;
   struct filename_id ** slot = (struct filename_id **) hash_find_slot (&goaltreeFiles, &key);
   if (!HASH_VACANT(*slot))
-  {
+    {
       return (*slot)->id;
-  }
+    }
 
   struct filename_id * newfId = (struct filename_id *) xcalloc (sizeof (struct filename_id));
   newfId->id = ++nFiles;
@@ -68,42 +68,100 @@ filename_to_id (const char * filename)
   return newfId->id;
 }
 
+static int prettyPrint = 0;
+
 static void print_n_spaces (const int n, FILE * f)
 {
+  if (!prettyPrint) return;
+
   int i;
   for (i = 0; i < n; ++i)
     fprintf (f, " ");
 }
 
+/** Prints the opening brace of a JavaScript object */
+static void print_object_start (const int nSpaces, FILE * f)
+{
+  print_n_spaces (nSpaces, f);
+
+  fprintf (f, "{");
+  if (prettyPrint)
+    {
+      fprintf (f, "\n");
+    }
+}
+
+/** Prints the closing brace of a JavaScript object */
+static void print_object_end (const int nSpaces, FILE * f)
+{
+  print_n_spaces (nSpaces, f);
+
+  fprintf (f, "}");
+  if (prettyPrint)
+    {
+      fprintf (f, "\n");
+    }
+}
+
+/** Prints the opening bracket of a JavaScript array */
+static void print_array_start (const int nSpaces, FILE * f)
+{
+  print_n_spaces (nSpaces, f);
+
+  fprintf (f, "[");
+  if (prettyPrint)
+    {
+      fprintf (f, "\n");
+    }
+}
+
+/** Prints the closing bracket of a JavaScript array */
+static void print_array_end (const int nSpaces, FILE * f)
+{
+  print_n_spaces (nSpaces, f);
+
+  fprintf (f, "]");
+  if (prettyPrint)
+    {
+      fprintf (f, "\n");
+    }
+}
+
+/** Prints the dependency tree as nested JavaScript objects and arrays */
 static void print_deps_recursive (struct dep * firstDep, int level, FILE * f)
 {
   struct dep * depItr = firstDep;
   for (; depItr != NULL; depItr = depItr->next)
     {
-      print_n_spaces (level, f);
-
       if (depItr->file->deps != NULL)
         {
-          fprintf (f, "{\n");
-          print_n_spaces (level, f);
-          fprintf (f, " \"f%ld\": [\n", filename_to_id (depItr->file->name));
+          print_object_start (level, f);
+
+          print_n_spaces (level+1, f);
+          fprintf (f, "\"f%ld\":", filename_to_id (depItr->file->name));
+
+          print_array_start (0, f);
 
           print_deps_recursive (depItr->file->deps, level+2, f);
 
-          print_n_spaces (level, f);
+          print_array_end (level+1, f);
 
-          fprintf (f, " ]\n");
-          print_n_spaces (level, f);
-          fprintf (f, "}");
+          print_object_end (level, f);
         }
       else
         {
-            fprintf (f, "\"f%ld\"", filename_to_id (depItr->file->name));
+          print_n_spaces (level, f);
+
+          fprintf (f, "\"f%ld\"", filename_to_id (depItr->file->name));
         }
 
       if (depItr->next != NULL)
         fprintf (f, ",");
-      fprintf (f, "\n");
+
+      if (prettyPrint)
+        {
+          fprintf (f, "\n");
+        }
     }
 }
 
@@ -112,38 +170,63 @@ void print_goal_tree (struct goaldep * goals, FILE * f)
   struct goaldep * itr = goals;
   hash_init (&goaltreeFiles, 1000, file_hash_1, file_hash_2, file_hash_cmp);
 
-  fprintf (f,"{\n\"targets\": [\n");
+  print_object_start (0, f);
+
+  print_n_spaces (1, f);
+  fprintf (f,"\"targets\":");
+
+  print_array_start (0,f );
+
   for (; itr != NULL; itr = itr->next)
     {
-      fprintf (f, "{\n");
-      fprintf (f, " \"f%ld\" : [\n", filename_to_id(itr->file->name));
-      print_deps_recursive (itr->file->deps, 2, f);
-      fprintf (f, " ]\n");
-      fprintf (f, "}");
+      print_object_start (2, f);
+
+      print_n_spaces (3, f);
+      fprintf (f, "\"f%ld\":", filename_to_id(itr->file->name));
+      print_array_start (0, f);
+
+      print_deps_recursive (itr->file->deps, 4, f);
+
+      print_array_end (3, f);
+
+      print_object_end (2, f);
+
       if (itr->next != NULL)
         fprintf (f, ",");
-      fprintf (f, "\n");
+
+      if (prettyPrint)
+        {
+          fprintf (f, "\n");
+        }
     }
-  fprintf (f, "],\n");
+  print_array_end (1, f);
+
+  fprintf (f, ",\n");
 
   struct filename_id ** fileIds = (struct filename_id **)hash_dump (&goaltreeFiles, NULL, NULL);
   struct filename_id ** fileIds_end = fileIds + goaltreeFiles.ht_fill;
   struct filename_id ** fileId;
   struct filename_id ** fileIds_end_minus1 = fileIds + goaltreeFiles.ht_fill - 1;
-  fprintf (f, "\"ids\": {\n");
+  fprintf (f, "\"ids\":");
+  print_object_start (1,f);
   for (fileId = fileIds; fileId < fileIds_end; fileId++)
-  {
-      fprintf (f, "  \"f%ld\" : \"%s\"",
+    {
+      print_n_spaces (1, f);
+      fprintf (f, "\"f%ld\":\"%s\"",
                (*fileId)->id,
                (*fileId)->filename);
       if (fileId != fileIds_end_minus1)
-      {
+        {
           fprintf (f,",");
-      }
-      fprintf (f,"\n");
-  }
-  fprintf (f, "}\n");
+        }
+
+      if (prettyPrint)
+        {
+          fprintf (f,"\n");
+        }
+    }
+  print_object_end (1, f);
   free (fileIds);
-  fprintf (f, "}\n");
+  print_object_end (0, f);
   hash_free_items (&goaltreeFiles);
 }
