@@ -11,7 +11,4 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
-void init_ctags_output (const char * filename);
-void add_to_ctags (const char * name, const char * filename, unsigned long lineno);
-void write_out_ctags ();
+void print_goal_tree (struct goaldep * goals, FILE * f);

@@ -12,20 +12,20 @@ class GoalDepTreeModel (QStandardItemModel):
 
         with open (jsonFile) as f:
             treeData = json.load(f)
-            self.setTreeData (self.invisibleRootItem(), treeData)
+            self.setTreeData (self.invisibleRootItem(), treeData['targets'], treeData['ids'])
 
 
-    def setTreeData (self, parent, treeData):
+    def setTreeData (self, parent, treeData, idData):
         if type (treeData) == list:
             for elem in treeData:
-                self.setTreeData (parent, elem)
+                self.setTreeData (parent, elem, idData)
         elif type (treeData) == dict:
             for elem in treeData:
-                newParent = QStandardItem (elem)
-                self.setTreeData (newParent, treeData[elem])
+                newParent = QStandardItem (idData[ elem ])
+                self.setTreeData (newParent, treeData[elem], idData)
                 parent.appendRow (newParent)
         else:
-            parent.appendRow (QStandardItem (treeData))
+            parent.appendRow (QStandardItem (idData[ treeData ]))
 
     def goalCount (self):
         return self.invisibleRootItem().rowCount()
