@@ -6,7 +6,7 @@ A GNU make fork with added features for statically analyzing Makefile-based proj
 
 ### From a tarball
 
-You can find the latest tarball in this repository at releases/make-analyze-4.2.92.tar.gz.
+You can find the latest tarball in this repository at releases/make-analyze-4.2.92.tar.gz. Or you can download it from http://debamitro.github.io/make-analyze/make-analyze-4.2.92.tar.gz.
 Once you unpack it you should be able to follow the usual steps of
 
 ```bash
