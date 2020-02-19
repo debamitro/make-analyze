@@ -25,6 +25,8 @@ struct filename_id
 {
   const char * filename;
   unsigned long id;
+  unsigned long dependents;
+  unsigned long dependers;
 };
 
 static unsigned long nFiles = 0;
@@ -49,7 +51,7 @@ file_hash_cmp (const void *x, const void *y)
 }
 
 static unsigned long
-filename_to_id (const char * filename)
+filename_to_id (const char * filename, const int isDependent)
 {
   struct filename_id key;
   key.filename = filename;
@@ -57,12 +59,18 @@ filename_to_id (const char * filename)
   struct filename_id ** slot = (struct filename_id **) hash_find_slot (&goaltreeFiles, &key);
   if (!HASH_VACANT(*slot))
     {
+      if (isDependent)
+        {
+          (*slot)->dependers++;
+        }
       return (*slot)->id;
     }
 
   struct filename_id * newfId = (struct filename_id *) xcalloc (sizeof (struct filename_id));
   newfId->id = ++nFiles;
   newfId->filename = filename;
+  newfId->dependers = 1;
+  newfId->dependents = 0;
   hash_insert_at (&goaltreeFiles, newfId, slot);
 
   return newfId->id;
@@ -127,41 +135,121 @@ static void print_array_end (const int nSpaces, FILE * f)
     }
 }
 
-/** Prints the dependency tree as nested JavaScript objects and arrays */
-static void print_deps_recursive (struct dep * firstDep, int level, FILE * f)
+struct dep_tree_child_list
 {
-  struct dep * depItr = firstDep;
-  for (; depItr != NULL; depItr = depItr->next)
-    {
-      if (depItr->file->deps != NULL)
-        {
-          print_object_start (level, f);
+  struct file * child;
+  int level;
+  struct dep_tree_child_list * next;
+};
 
-          print_n_spaces (level+1, f);
-          fprintf (f, "\"f%ld\":", filename_to_id (depItr->file->name));
+static struct dep_tree_child_list * dep_tree_child_list_alloc (struct file * const child,
+                                                               const int level)
+{
+  struct dep_tree_child_list * depTreeChild = (struct dep_tree_child_list *) xcalloc (sizeof (struct dep_tree_child_list));
+  depTreeChild->child = child;
+  depTreeChild->level = level;
+  depTreeChild->next = NULL;
+
+  return depTreeChild;
+}
+
+static struct dep_tree_child_list * dep_tree_child_list_add_after (struct dep_tree_child_list * const listItr,
+                                                                   struct file * const child,
+                                                                   const int level)
+{
+  struct dep_tree_child_list * newChild = dep_tree_child_list_alloc (child, level);
+  if (listItr->next != NULL)
+    {
+      /* Add after listItr by inserting before listItr->next */
+      struct dep_tree_child_list * tmp = listItr->next;
+      listItr->next = newChild;
+      newChild->next = tmp;
+    }
+  else
+    {
+      /* Add after listItr directly */
+      listItr->next = newChild;
+    }
+
+  return newChild;
+}
+
+/** Prints the dependency tree as nested JavaScript objects and arrays */
+static void print_file_deps (struct file * depender, const int level, FILE * f)
+{
+  struct dep_tree_child_list * depItr = dep_tree_child_list_alloc (depender, level);
+
+  while (depItr != NULL)
+    {
+      struct dep * childItr = depItr->child->deps;
+
+      struct dep_tree_child_list * appendAfter = depItr;
+      for (; childItr != NULL; childItr = childItr->next)
+        {
+          appendAfter = dep_tree_child_list_add_after (appendAfter, childItr->file, depItr->level+1);
+        }
+
+      if (depItr->next != NULL && depItr->next->level > depItr->level)
+        {
+          /* This node has children, hence it has to be dumped as an object
+             with a property whose value is an array of its children */
+          print_object_start (depItr->level, f);
+
+          print_n_spaces (depItr->level+1, f);
+          fprintf (f, "\"f%ld\":", filename_to_id (depItr->child->name, 1));
 
           print_array_start (0, f);
-
-          print_deps_recursive (depItr->file->deps, level+2, f);
-
-          print_array_end (level+1, f);
-
-          print_object_end (level, f);
         }
       else
         {
-          print_n_spaces (level, f);
+          /* This is a leaf-level node */
+          print_n_spaces (depItr->level+1, f);
 
-          fprintf (f, "\"f%ld\"", filename_to_id (depItr->file->name));
+          fprintf (f, "\"f%ld\"", filename_to_id (depItr->child->name, 1));
         }
 
-      if (depItr->next != NULL)
-        fprintf (f, ",");
-
-      if (prettyPrint)
+      if (depItr->next == NULL || depItr->next->level < depItr->level)
         {
-          fprintf (f, "\n");
+          /* This is the end of one or multiple lists */
+          int numberOfEnded = 0;
+          if (depItr->next == NULL)
+            {
+              numberOfEnded = depItr->level - level;
+            }
+          else
+            {
+              numberOfEnded = depItr->level - depItr->next->level;
+            }
+
+          if (prettyPrint)
+            {
+              fprintf (f, "\n");
+            }
+
+          int i;
+          for (i = numberOfEnded; i > 0; --i)
+            {
+              print_array_end (i+1, f);
+
+              print_object_end (i, f);
+            }
+
         }
+
+      if (depItr->next != NULL && depItr->next->level <= depItr->level)
+        {
+          fprintf (f, ",");
+
+          if (prettyPrint)
+            {
+              fprintf (f, "\n");
+            }
+        }
+
+
+      struct dep_tree_child_list * discarded = depItr;
+      depItr = depItr->next;
+      free (discarded);
     }
 }
 
@@ -179,17 +267,7 @@ void print_goal_tree (struct goaldep * goals, FILE * f)
 
   for (; itr != NULL; itr = itr->next)
     {
-      print_object_start (2, f);
-
-      print_n_spaces (3, f);
-      fprintf (f, "\"f%ld\":", filename_to_id(itr->file->name));
-      print_array_start (0, f);
-
-      print_deps_recursive (itr->file->deps, 4, f);
-
-      print_array_end (3, f);
-
-      print_object_end (2, f);
+      print_file_deps (itr->file, 2, f);
 
       if (itr->next != NULL)
         fprintf (f, ",");
@@ -226,7 +304,17 @@ void print_goal_tree (struct goaldep * goals, FILE * f)
         }
     }
   print_object_end (1, f);
-  free (fileIds);
   print_object_end (0, f);
+
+  /* Work in progress - unfinished
+  for (fileId = fileIds; fileId < fileIds_end; fileId++)
+    {
+      printf ("%ld %ld\n",
+              (*fileId)->dependers,
+              (*fileId)->id);
+    }
+  */
+
+  free (fileIds);
   hash_free_items (&goaltreeFiles);
 }
