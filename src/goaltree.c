@@ -27,6 +27,7 @@ struct filename_id
   unsigned long id;
   unsigned long dependents;
   unsigned long dependers;
+  unsigned int is_considered;
 };
 
 static unsigned long nFiles = 0;
@@ -50,13 +51,29 @@ file_hash_cmp (const void *x, const void *y)
                          ((const struct filename_id *)y)->filename);
 }
 
-static unsigned long
-filename_to_id (const char * filename, const int isDependent)
+static struct filename_id ** filename_to_hash_slot (const char * filename)
 {
   struct filename_id key;
   key.filename = filename;
   key.id = 0;
-  struct filename_id ** slot = (struct filename_id **) hash_find_slot (&goaltreeFiles, &key);
+  return  (struct filename_id **) hash_find_slot (&goaltreeFiles, &key);
+}
+
+static struct filename_id * filename_to_filename_id (const char * filename)
+{
+  struct filename_id ** slot = filename_to_hash_slot (filename);
+  if (!HASH_VACANT(*slot))
+    {
+      return (*slot);
+    }
+
+  return NULL;
+}
+
+static unsigned long
+filename_to_id (const char * filename, const int isDependent)
+{
+  struct filename_id ** slot = filename_to_hash_slot (filename);
   if (!HASH_VACANT(*slot))
     {
       if (isDependent)
@@ -71,9 +88,42 @@ filename_to_id (const char * filename, const int isDependent)
   newfId->filename = filename;
   newfId->dependers = 1;
   newfId->dependents = 0;
+  newfId->is_considered = 0;
   hash_insert_at (&goaltreeFiles, newfId, slot);
 
   return newfId->id;
+}
+
+static void start_considering_file (const char * filename)
+{
+  struct filename_id * filenameId = filename_to_filename_id (filename);
+
+  if (filenameId != NULL)
+    {
+      filenameId->is_considered = 1;
+    }
+}
+
+static void stop_considering_file (const char * filename)
+{
+  struct filename_id * filenameId = filename_to_filename_id (filename);
+
+  if (filenameId != NULL)
+    {
+      filenameId->is_considered = 0;
+    }
+}
+
+static int considering_file (const char * filename)
+{
+  struct filename_id * filenameId = filename_to_filename_id (filename);
+
+  if (filenameId != NULL)
+    {
+      return filenameId->is_considered;
+    }
+
+  return 0;
 }
 
 static int prettyPrint = 0;
@@ -186,9 +236,18 @@ static void print_file_deps (struct file * depender, const int level, FILE * f)
       struct dep_tree_child_list * appendAfter = depItr;
       for (; childItr != NULL; childItr = childItr->next)
         {
+          if (considering_file (childItr->file->name))
+            {
+              /* possible cyclic dependency */
+              printf ("cyclic dependency found on %s\n",childItr->file->name);
+              continue;
+            }
+
           appendAfter = dep_tree_child_list_add_after (appendAfter, childItr->file, depItr->level+1);
         }
 
+      const unsigned long depfileId = filename_to_id (depItr->child->name, 1);
+      start_considering_file (depItr->child->name);
       if (depItr->next != NULL && depItr->next->level > depItr->level)
         {
           /* This node has children, hence it has to be dumped as an object
@@ -196,7 +255,7 @@ static void print_file_deps (struct file * depender, const int level, FILE * f)
           print_object_start (depItr->level, f);
 
           print_n_spaces (depItr->level+1, f);
-          fprintf (f, "\"f%ld\":", filename_to_id (depItr->child->name, 1));
+          fprintf (f, "\"f%ld\":", depfileId);
 
           print_array_start (0, f);
         }
@@ -205,7 +264,7 @@ static void print_file_deps (struct file * depender, const int level, FILE * f)
           /* This is a leaf-level node */
           print_n_spaces (depItr->level+1, f);
 
-          fprintf (f, "\"f%ld\"", filename_to_id (depItr->child->name, 1));
+          fprintf (f, "\"f%ld\"", depfileId);
         }
 
       if (depItr->next == NULL || depItr->next->level < depItr->level)
@@ -247,6 +306,7 @@ static void print_file_deps (struct file * depender, const int level, FILE * f)
         }
 
 
+      stop_considering_file (depItr->child->name);
       struct dep_tree_child_list * discarded = depItr;
       depItr = depItr->next;
       free (discarded);
