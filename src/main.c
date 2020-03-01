@@ -282,6 +282,10 @@ char *ctags_filename = NULL;
 
 char * goaltree_filename = NULL;
 
+/* option for running interactive goal tree browser */
+
+int goaltree_browser = 0;
+
 /* option for detecting multiple definitions of the same variable */
 
 int detect_multiple_definition = 0;
@@ -480,7 +484,8 @@ static const struct command_switch switches[] =
     { CHAR_MAX+9, string, &jobserver_auth, 1, 0, 0, 0, 0, "jobserver-fds" },
     { CHAR_MAX+10, string, &ctags_filename, 1, 1, 0, 0, 0, "ctags-file" },
     { CHAR_MAX+11, string, &goaltree_filename, 1, 1, 0, 0, 0, "goaltree-file" },
-    { CHAR_MAX+12, flag, &detect_multiple_definition, 1, 1, 0, 0, 0, "detect-multiple-definition"},
+    { CHAR_MAX+12, flag, &goaltree_browser, 1, 1, 0, 0, 0, "goaltree-browser" },
+    { CHAR_MAX+13, flag, &detect_multiple_definition, 1, 1, 0, 0, 0, "detect-multiple-definition"},
     { 0, 0, 0, 0, 0, 0, 0, 0, 0 }
   };
 
@@ -2611,6 +2616,11 @@ main (int argc, char **argv, char **envp)
   /* Update the goals.  */
 
   DB (DB_BASIC, (_("Updating goal targets....\n")));
+
+  if (goaltree_browser > 0)
+    {
+      browse_goal_tree (goals);
+    }
 
   if (goaltree_filename != NULL)
     {

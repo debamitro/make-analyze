@@ -313,7 +313,9 @@ static void print_file_deps (struct file * depender, const int level, FILE * f)
     }
 }
 
-void print_goal_tree (struct goaldep * goals, FILE * f)
+/** Prints the dependency trees of all the goals
+ * as nested JavaScript objects and arrays */
+void print_goal_tree (struct goaldep * const goals, FILE * f)
 {
   struct goaldep * itr = goals;
   hash_init (&goaltreeFiles, 1000, file_hash_1, file_hash_2, file_hash_cmp);
@@ -367,14 +369,143 @@ void print_goal_tree (struct goaldep * goals, FILE * f)
   print_object_end (0, f);
 
   /* Work in progress - unfinished
-  for (fileId = fileIds; fileId < fileIds_end; fileId++)
-    {
-      printf ("%ld %ld\n",
-              (*fileId)->dependers,
-              (*fileId)->id);
-    }
+     for (fileId = fileIds; fileId < fileIds_end; fileId++)
+     {
+     printf ("%ld %ld\n",
+     (*fileId)->dependers,
+     (*fileId)->id);
+     }
   */
 
   free (fileIds);
   hash_free_items (&goaltreeFiles);
+}
+
+struct previous_file_list
+{
+  struct file * file;
+  struct previous_file_list * previous;
+};
+
+static void push_current_file (struct previous_file_list ** previousFiles,
+                               struct file * currentFile)
+{
+  struct previous_file_list * previousFile = (struct previous_file_list *) xcalloc (sizeof (struct previous_file_list));
+  previousFile->file = currentFile;
+  previousFile->previous = *previousFiles;
+  *previousFiles = previousFile;
+}
+
+static struct file * pop_previous_file (struct previous_file_list ** previousFiles)
+{
+  if (*previousFiles != NULL)
+    {
+      struct file * previousFile = (*previousFiles)->file;
+      struct previous_file_list * previous = (*previousFiles)->previous;
+      free (*previousFiles);
+      *previousFiles = previous;
+      return previousFile;
+    }
+
+  return NULL;
+}
+
+/** Interactive browser for goals
+ * and their dependencies */
+void browse_goal_tree (struct goaldep * const goals)
+{
+  printf ("Goal tree browser\n");
+  printf ("=================\n");
+
+  int keeprunning = 1;
+  while (keeprunning)
+    {
+      struct goaldep * itr = goals;
+
+      printf ("Goals:\n");
+      int goalNumber = 0;
+      for (; itr != NULL; itr = itr->next)
+        {
+          printf ("%d: %s\n",
+                  ++goalNumber,
+                  itr->file->name);
+        }
+
+      printf ("Which one do you want details on?\n");
+      printf ("Select from the above choices or 0 to exit ");
+      int selectedGoal;
+      scanf ("%d",&selectedGoal);
+
+      if (selectedGoal == 0)
+        {
+          /* Exit */
+          keeprunning = 0;
+          break;
+        }
+
+      if (selectedGoal > goalNumber)
+        {
+          printf ("Bad input, let's try again\n");
+          continue;
+        }
+
+      itr = goals;
+      for (goalNumber = 0; goalNumber < selectedGoal-1; ++goalNumber)
+        {
+          itr = itr->next;
+        }
+
+      struct file * currentFile = itr->file;
+      struct previous_file_list * previousFiles = NULL;
+      while (currentFile != NULL)
+        {
+          printf ("Dependencies of %s:\n",currentFile->name);
+          struct dep * depItr;
+          goalNumber = 0;
+          for (depItr = currentFile->deps; depItr != NULL; depItr = depItr->next)
+            {
+              printf ("%d: %s%s\n",
+                      ++goalNumber,
+                      depItr->file->name,
+                      depItr->ignore_mtime ? " [order-only]" : "");
+            }
+
+          printf ("Which one do you want details on?\n");
+          printf ("Select from the above choices, %d to go back, or 0 to exit ", goalNumber+1);
+          int selectedFile;
+          scanf ("%d",&selectedFile);
+
+          if (selectedFile == goalNumber+1)
+            {
+              /* Go back to the previous one */
+              currentFile = pop_previous_file (&previousFiles);
+              continue;
+            }
+
+          if (selectedFile == 0)
+            {
+              /* Exit */
+              keeprunning = 0;
+              break;
+            }
+
+          if (selectedFile > goalNumber+1 ||
+              selectedFile < 0)
+            {
+              printf ("Bad input, let's try again\n");
+              continue;
+            }
+
+          /* Let's move to dependency number 'selectedFile' */
+          depItr = currentFile->deps;
+          for (goalNumber = 0; goalNumber < selectedFile-1; ++goalNumber)
+            {
+              depItr = depItr->next;
+            }
+
+          push_current_file (&previousFiles, currentFile);
+          currentFile = depItr->file;
+        }
+    }
+  printf ("Bye!");
 }

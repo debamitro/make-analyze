@@ -12,3 +12,5 @@
  */
 
 void print_goal_tree (struct goaldep * goals, FILE * f);
+
+void browse_goal_tree (struct goaldep * goals);
