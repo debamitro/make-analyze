@@ -509,3 +509,121 @@ void browse_goal_tree (struct goaldep * const goals)
     }
   printf ("Bye!");
 }
+
+struct files_bfs_list
+{
+  struct file * current;
+  struct files_bfs_list * next;
+};
+
+static void print_goal_tree_children (FILE * f, struct goaldep * const goals)
+{
+  struct files_bfs_list * bfs_list = NULL;
+  struct files_bfs_list * bfs_list_tail = NULL;
+
+  struct goaldep * itr = goals;
+  for (;itr != NULL; itr = itr->next)
+    {
+      struct files_bfs_list * bfs_elem = (struct files_bfs_list *) xcalloc (sizeof (struct files_bfs_list));
+      bfs_elem->current = itr->file;
+      bfs_elem->next = NULL;
+
+      if (bfs_list == NULL)
+        {
+          bfs_list = bfs_elem;
+          bfs_list_tail = bfs_list;
+        }
+      else
+        {
+          bfs_list_tail->next = bfs_elem;
+          bfs_list_tail = bfs_elem;
+        }
+    }
+
+  struct files_bfs_list * itr2 = bfs_list;
+  while (itr2 != NULL)
+    {
+      fprintf (f, "\"%s\":", itr2->current->name);
+      if (itr2->current->deps == NULL)
+        {
+          fprintf (f, "[]");
+        }
+      else
+        {
+          fprintf (f, "[");
+          struct dep * depItr = itr2->current->deps;
+          for (;depItr != NULL; depItr = depItr->next)
+            {
+              fprintf (f, "\"%s\"",depItr->file->name);
+              if (depItr->next != NULL)
+                fprintf (f, ",");
+
+
+              struct files_bfs_list * bfs_elem = (struct files_bfs_list *) xcalloc (sizeof (struct files_bfs_list));
+              bfs_elem->current = depItr->file;
+              bfs_elem->next = NULL;
+              bfs_list_tail->next = bfs_elem;
+              bfs_list_tail = bfs_elem;
+            }
+          fprintf (f, "]");
+        }
+
+      if (itr2->next != NULL)
+        fprintf (f, ",\n");
+
+      struct files_bfs_list * tmp = itr2->next;
+      free (itr2);
+      itr2 = tmp;
+    }
+}
+
+static void print_goal_tree_file_ids (FILE * f)
+{
+}
+
+void print_goal_tree_as_html (struct goaldep * const goals)
+{
+  FILE * js_file = fopen ("goaltree.js", "w");
+
+  if (js_file != NULL)
+    {
+      fprintf (js_file,
+               "const data = {\n"
+               "  targets : [");
+      struct goaldep * itr = goals;
+      for (;itr != NULL; itr = itr->next)
+        {
+          fprintf (js_file, "\"%s\"",itr->file->name);
+          if (itr->next != NULL)
+            fprintf (js_file, ",");
+        }
+      fprintf (js_file,
+               "],\n"
+               "  children : {\n");
+
+      print_goal_tree_children (js_file, goals);
+
+      fprintf (js_file,
+               "  },\n"
+               "  ids : {\n");
+
+      print_goal_tree_file_ids (js_file);
+
+      fprintf (js_file,
+               "  }\n"
+               "};\n");
+
+      fprintf (js_file,
+                 "function setupGoalTree (container)\n"
+                 "{\n"
+                 "    let goalTree = MinimalistTree (document.getElementById (container));\n"
+                 "    goalTree.draw ({\n"
+                 "        getroots : () => data.targets,\n"
+                 "        getchildren : (parent) => data.children[parent],\n"
+                 "//        getlabel : (node) => data.ids[node]\n"
+                 "        getlabel : (node) => node\n"
+                 "    });\n"
+                 "}\n");
+        fclose (js_file);
+    }
+}
