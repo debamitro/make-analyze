@@ -33,6 +33,10 @@ Write out a json file with the current goals and their dependencies, recursively
 
 Starting an interactve console-based browser to inspect the current goals and their dependencies.
 
+### --goaltree-html-dir &lt;directory-name&gt;
+
+Generate an HTML-based viewer for the current goals and their directories, inside a directory named directory-name.<current-process-id>. This is work in progress and uses https://github.com/debamitro/minimalist-tree-js for displaying the tree interactively.
+
 ### --detect-multiple-definition
 
 Print out details about multiply-defined global variables. This is helpful for tracking down problems in large makefiles with a lot of variables.

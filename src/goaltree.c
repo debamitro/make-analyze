@@ -18,6 +18,8 @@
 #include "hash.h"
 
 #include <stdio.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 static struct hash_table goaltreeFiles;
 
@@ -581,49 +583,207 @@ static void print_goal_tree_file_ids (FILE * f)
 {
 }
 
-void print_goal_tree_as_html (struct goaldep * const goals)
+static void generate_goaltree_js (struct goaldep * goals,
+                                  const char * output_dir);
+static void generate_goaltree_html (const char * output_dir);
+static void generate_minimalist_tree_js (const char * output_dir);
+
+/**
+ * Generate an HTML version of the goal dependency
+ * tree viewer, in a directory called output_dir.<process-id>
+ */
+void print_goal_tree_as_html (struct goaldep * const goals,
+                              const char * output_dir)
 {
-  FILE * js_file = fopen ("goaltree.js", "w");
-
-  if (js_file != NULL)
+  char * unique_output_dir = (char *) xcalloc (strlen(output_dir) + 32);
+  sprintf (unique_output_dir,"%s.%d",output_dir,getpid());
+  if (mkdir (unique_output_dir, 511) != 0)
     {
-      fprintf (js_file,
-               "const data = {\n"
-               "  targets : [");
-      struct goaldep * itr = goals;
-      for (;itr != NULL; itr = itr->next)
-        {
-          fprintf (js_file, "\"%s\"",itr->file->name);
-          if (itr->next != NULL)
-            fprintf (js_file, ",");
-        }
-      fprintf (js_file,
-               "],\n"
-               "  children : {\n");
-
-      print_goal_tree_children (js_file, goals);
-
-      fprintf (js_file,
-               "  },\n"
-               "  ids : {\n");
-
-      print_goal_tree_file_ids (js_file);
-
-      fprintf (js_file,
-               "  }\n"
-               "};\n");
-
-      fprintf (js_file,
-                 "function setupGoalTree (container)\n"
-                 "{\n"
-                 "    let goalTree = MinimalistTree (document.getElementById (container));\n"
-                 "    goalTree.draw ({\n"
-                 "        getroots : () => data.targets,\n"
-                 "        getchildren : (parent) => data.children[parent],\n"
-                 "//        getlabel : (node) => data.ids[node]\n"
-                 "        getlabel : (node) => node\n"
-                 "    });\n"
-                 "}\n");
-        fclose (js_file);
+      printf ("Error: couldn't create directory %s for goaltree HTML output\n",unique_output_dir);
+      free (unique_output_dir);
+      return;
     }
+
+  generate_goaltree_js (goals, unique_output_dir);
+  generate_goaltree_html (unique_output_dir);
+  generate_minimalist_tree_js (unique_output_dir);
+
+  printf ("Generated HTML-based goal dependency tree viewer at %s/goaltree.html\n",
+          unique_output_dir);
+  free (unique_output_dir);
+}
+
+static void generate_goaltree_js (struct goaldep * const goals,
+                                  const char * output_dir)
+{
+  char * path_to_js_file = (char *) xcalloc (strlen (output_dir) +
+                                             strlen("/goaltree.js") + 1);
+  sprintf (path_to_js_file, "%s/goaltree.js",output_dir);
+  FILE * js_file = fopen (path_to_js_file, "w");
+
+  if (js_file == NULL)
+    {
+      printf ("Error: couldn't create %s\n",
+              path_to_js_file);
+      free (path_to_js_file);
+      return;
+    }
+
+  fprintf (js_file,
+           "const data = {\n"
+           "  targets : [");
+  struct goaldep * itr = goals;
+  for (;itr != NULL; itr = itr->next)
+    {
+      fprintf (js_file, "\"%s\"",itr->file->name);
+      if (itr->next != NULL)
+        fprintf (js_file, ",");
+    }
+  fprintf (js_file,
+           "],\n"
+           "  children : {\n");
+
+  print_goal_tree_children (js_file, goals);
+
+  fprintf (js_file,
+           "  },\n"
+           "  ids : {\n");
+
+  print_goal_tree_file_ids (js_file);
+
+  fprintf (js_file,
+           "  }\n"
+           "};\n");
+
+  fprintf (js_file,
+           "function setupGoalTree (container)\n"
+           "{\n"
+           "    let goalTree = MinimalistTree (document.getElementById (container));\n"
+           "    goalTree.draw ({\n"
+           "        getroots : () => data.targets,\n"
+           "        getchildren : (parent) => data.children[parent],\n"
+           "//        getlabel : (node) => data.ids[node]\n"
+           "        getlabel : (node) => node\n"
+           "    });\n"
+           "}\n");
+  fclose (js_file);
+
+  free (path_to_js_file);
+}
+
+/** Generates an HTML file with the contents
+ * of html-viewer/goaltree.html
+ * inside the directory output_dir
+ */
+static void generate_goaltree_html (const char * output_dir)
+{
+  char * path_to_html_file = (char *) xcalloc (strlen (output_dir) +
+                                               strlen("/goaltree.html") + 1);
+  sprintf (path_to_html_file, "%s/goaltree.html",output_dir);
+  FILE * html_file = fopen (path_to_html_file, "w");
+
+  if (html_file == NULL)
+    {
+      printf ("Error: couldn't create %s\n",
+              path_to_html_file);
+      free (path_to_html_file);
+      return;
+    }
+
+  fprintf (html_file,
+           "<!doctype html>\n"
+           "<html>\n"
+           "<head><title>Goal dependency tree viewer</title>\n"
+           "<script src=\"minimalist-tree.js\"></script>\n"
+           "<script src=\"goaltree.js\"></script>\n"
+           "<script>\n"
+           "  document.addEventListener('DOMContentLoaded', () => setupGoalTree ('theTree'));\n"
+           "</script>\n"
+           "</head>\n"
+           "<body>\n"
+           "<h1>Goal dependency tree</h1>\n"
+           "<div id =\"theTree\"></div>\n"
+           "</body>"
+           "</html>");
+  fclose (html_file);
+  free (path_to_html_file);
+}
+
+/** Generates a JavaScript file with the contents
+ * of html-viewer/mininalist-tree.js
+ * inside the directory output_dir
+ */
+static void generate_minimalist_tree_js (const char * output_dir)
+{
+  char * path_to_js_file = (char *) xcalloc (strlen (output_dir) +
+                                             strlen("/minimalist-tree.js") + 1);
+  sprintf (path_to_js_file, "%s/minimalist-tree.js",output_dir);
+  FILE * js_file = fopen (path_to_js_file, "w");
+
+  if (js_file == NULL)
+    {
+      printf ("Error: couldn't create %s\n",
+              path_to_js_file);
+      free (path_to_js_file);
+      return;
+    }
+
+  fprintf (js_file,
+           "function MinimalistTree (container)\n"
+           "{\n"
+           "  return {\n"
+           "    draw : (options) => expandOrCollapseNodes (container, options)\n"
+           "  }\n"
+           "}\n"
+           "\n"
+           "function addNode (parent, node, options)\n"
+           "{\n"
+           "  var li = document.createElement ('li');\n"
+           "  li.appendChild (document.createTextNode (options.getlabel(node)));\n"
+           "  const children = options.getchildren (node);\n"
+           "  if (children != null && children.length > 0)\n"
+           "  {\n"
+           "    li.addEventListener ('click', (e) => {\n"
+           "      expandOrCollapseNodes (li, {\n"
+           "        getroots : () => children,\n"
+           "        getchildren : options.getchildren,\n"
+           "        getlabel : options.getlabel\n"
+           "      });\n"
+           "      e.stopPropagation ();\n"
+           "    });\n"
+           "  }\n"
+           "  else\n"
+           "  {\n"
+           "    li.addEventListener ('click', (e) => e.stopPropagation ());\n"
+           "  }\n"
+           "  parent.appendChild (li);\n"
+           "}\n"
+           "\n"
+           "function expandOrCollapseNodes (parent, options)\n"
+           "{\n"
+           "  var existingUls = parent.getElementsByTagName ('ul');\n"
+           "  if (existingUls.length > 0)\n"
+           "  {\n"
+           "    // Toggle the state\n"
+           "    var styles = window.getComputedStyle (existingUls.item(0));\n"
+           "    if (styles.getPropertyValue ('display') == 'none')\n"
+           "    {\n"
+           "      existingUls.item(0).setAttribute ('style', 'display:block');\n"
+           "    }\n"
+           "    else\n"
+           "    {\n"
+           "      existingUls.item(0).setAttribute ('style', 'display:none');\n"
+           "     }\n"
+           "     return;\n"
+           "  }\n"
+           "  // Create a new list for the nodes\n"
+           "  var ul = document.createElement ('ul');\n"
+           "  options.getroots().forEach ( (node) => {\n"
+           "    addNode (ul, node, options);\n"
+           "  });\n"
+           "  parent.appendChild (ul);\n"
+           "}\n");
+
+  fclose (js_file);
+  free (path_to_js_file);
 }

@@ -286,6 +286,10 @@ char * goaltree_filename = NULL;
 
 int goaltree_browser = 0;
 
+/* directory name for generating an HTML-based goaltree browser */
+
+char * goaltree_html_dir = NULL;
+
 /* option for detecting multiple definitions of the same variable */
 
 int detect_multiple_definition = 0;
@@ -485,7 +489,8 @@ static const struct command_switch switches[] =
     { CHAR_MAX+10, string, &ctags_filename, 1, 1, 0, 0, 0, "ctags-file" },
     { CHAR_MAX+11, string, &goaltree_filename, 1, 1, 0, 0, 0, "goaltree-file" },
     { CHAR_MAX+12, flag, &goaltree_browser, 1, 1, 0, 0, 0, "goaltree-browser" },
-    { CHAR_MAX+13, flag, &detect_multiple_definition, 1, 1, 0, 0, 0, "detect-multiple-definition"},
+    { CHAR_MAX+13, string, &goaltree_html_dir, 1, 1, 0, 0, 0, "goaltree-html-dir" },
+    { CHAR_MAX+14, flag, &detect_multiple_definition, 1, 1, 0, 0, 0, "detect-multiple-definition"},
     { 0, 0, 0, 0, 0, 0, 0, 0, 0 }
   };
 
@@ -2633,6 +2638,11 @@ main (int argc, char **argv, char **envp)
                   goaltree_filename, goaltree_filename);
           fclose (f);
         }
+    }
+
+  if (goaltree_html_dir != NULL)
+    {
+      print_goal_tree_as_html (goals, goaltree_html_dir);
     }
 
   {
