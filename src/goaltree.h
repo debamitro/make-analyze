@@ -14,3 +14,6 @@
 void print_goal_tree (struct goaldep * goals, FILE * f);
 
 void browse_goal_tree (struct goaldep * goals);
+
+void print_goal_tree_as_html (struct goaldep * goals,
+                              const char * output_dir);
